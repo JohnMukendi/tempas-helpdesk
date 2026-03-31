@@ -7,4 +7,5 @@ export interface Ticket {
   priority: 'low' | 'medium' | 'high';
   createdAt: Date;
   submittedBy: string;
+  screenshotUrl?: string;
 }

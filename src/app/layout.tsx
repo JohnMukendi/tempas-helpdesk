@@ -3,6 +3,7 @@ import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import './globals.css';
 import { tempasTheme } from '@/theme/theme';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Tempas Help Desk',
@@ -21,7 +22,9 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider theme={tempasTheme} defaultColorScheme="dark">
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </MantineProvider>
       </body>
     </html>

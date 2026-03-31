@@ -24,18 +24,34 @@ import Sidebar from '@/components/Sidebar';
 import StatCard from '@/components/StatCard';
 import TicketCard from '@/components/TicketCard';
 import TicketDetailModal from '@/components/TicketDetailModal';
+import LoginModal from '@/components/LoginModal';
 import { useTickets } from '@/hooks/useTickets';
+import { useAuth } from '@/context/AuthContext';
 import type { Ticket } from '@/types/ticket';
 import classes from './page.module.css';
 
 export default function DashboardPage() {
-  const { tickets, featureRequests, bugReports, loading, error } = useTickets();
+  const { user, loading: authLoading } = useAuth();
+  const { tickets, featureRequests, bugReports, loading: ticketsLoading, error: ticketsError } = useTickets();
+  
   const [activeTab, setActiveTab] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  if (authLoading) {
+    return (
+      <Center style={{ height: '100vh' }}>
+        <Loader color="warmGold" size="xl" type="bars" />
+      </Center>
+    );
+  }
+
+  if (!user) {
+    return <LoginModal />;
+  }
 
   const openTicket = (ticket: Ticket) => {
     setSelectedTicket(ticket);
@@ -170,25 +186,25 @@ export default function DashboardPage() {
         </Group>
 
         {/* Loading / Error */}
-        {loading && (
+        {ticketsLoading && (
           <Center py={60}>
             <Loader color="warmGold" size="lg" />
           </Center>
         )}
 
-        {error && (
+        {ticketsError && (
           <Center py={60}>
             <Group gap="sm">
               <IconAlertTriangle size={20} color="#ef4444" />
               <Text c="red" size="sm">
-                Failed to load tickets: {error}
+                Failed to load tickets: {ticketsError}
               </Text>
             </Group>
           </Center>
         )}
 
         {/* Ticket columns */}
-        {!loading && !error && (
+        {!ticketsLoading && !ticketsError && (
           <div className={classes.columns}>
             {/* Features column */}
             {(activeTab === 'all' || activeTab === 'features') && (
@@ -215,10 +231,10 @@ export default function DashboardPage() {
                   ) : (
                     filteredFeatures.map((ticket) => (
                       <TicketCard
-                        key={ticket.id}
-                        ticket={ticket}
-                        onClick={() => openTicket(ticket)}
-                      />
+                          key={ticket.id}
+                          ticket={ticket}
+                          onClick={() => openTicket(ticket)}
+                        />
                     ))
                   )}
                 </Stack>

@@ -35,6 +35,7 @@ export function useTickets() {
                 ? data.createdAt.toDate()
                 : new Date(data.createdAt),
             submittedBy: data.submittedBy ?? 'Unknown',
+            screenshotUrl: data.screenshotUrl,
           } as Ticket;
         });
         setTickets(docs);

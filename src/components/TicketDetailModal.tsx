@@ -176,6 +176,22 @@ export default function TicketDetailModal({
           </Text>
         </Box>
 
+        {ticket.screenshotUrl && (
+          <Box>
+            <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb={6}>
+              Attached Screenshot
+            </Text>
+            <Box style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={ticket.screenshotUrl} 
+                alt="Ticket attachment" 
+                style={{ width: '100%', display: 'block' }} 
+              />
+            </Box>
+          </Box>
+        )}
+
         <Divider opacity={0.1} />
 
         {/* Meta info */}
