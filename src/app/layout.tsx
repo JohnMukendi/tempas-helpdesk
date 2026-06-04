@@ -5,6 +5,10 @@ import './globals.css';
 import { tempasTheme } from '@/theme/theme';
 import { AuthProvider } from '@/context/AuthContext';
 
+// Force all pages to be server-rendered at request time.
+// Required for Supabase env vars to be available and for the auth-gated dashboard.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Tempas Help Desk',
   description: 'Manage feature requests and bug reports for Tempas',

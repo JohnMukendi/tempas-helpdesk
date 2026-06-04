@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 
 interface UserMock {
   email: string;
@@ -24,48 +23,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check localStorage for an existing session on load
-    const checkSession = async () => {
-      setLoading(true);
-      const savedEmail = localStorage.getItem('admin_email');
-      if (savedEmail) {
-        setUser({ email: savedEmail });
-      }
-      setLoading(false);
-    };
-    checkSession();
+    // Restore session from localStorage on mount
+    const savedEmail = localStorage.getItem('admin_email');
+    if (savedEmail) {
+      setUser({ email: savedEmail });
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      
-      const emailLower = email.trim().toLowerCase();
-      alert(emailLower)
-      const adminRef = doc(db, 'admins', emailLower);
-      const adminSnap = await getDoc(adminRef);
 
-      if (!adminSnap.exists()) {
-        alert("none")
+      const emailLower = email.trim().toLowerCase();
+
+      const { data, error: dbError } = await supabase
+        .from('admins')
+        .select('password')
+        .eq('email', emailLower)
+        .maybeSingle();
+
+      if (dbError || !data) {
         setError('Invalid email or password.');
-        setLoading(false);
         return;
       }
 
-      const data = adminSnap.data();
       if (data.password === password) {
-        // Success
         const newUser = { email: emailLower };
         setUser(newUser);
         localStorage.setItem('admin_email', emailLower);
       } else {
-        // Fail
         setError('Invalid email or password.');
       }
-    } catch (err: any) {
-      console.error('Manual login error:', err);
-      setError('An error occurred during login. Please ensure Firestore access is enabled.');
+    } catch (err: unknown) {
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -75,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setUser(null);
       localStorage.removeItem('admin_email');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Logout error:', err);
     }
   };
