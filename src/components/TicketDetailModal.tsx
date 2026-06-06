@@ -20,8 +20,7 @@ import {
 } from '@tabler/icons-react';
 import type { Ticket } from '@/types/ticket';
 import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -54,11 +53,14 @@ export default function TicketDetailModal({
     if (!ticket || ticket.status === newStatus) return;
     setIsUpdating(true);
     try {
-      const ticketRef = doc(db, 'tickets', ticket.id);
-      await updateDoc(ticketRef, { status: newStatus });
-      onClose()
-    } catch (error) {
-      console.error('Error updating ticket status:', error);
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status: newStatus })
+        .eq('id', ticket.id);
+      if (error) throw error;
+      onClose();
+    } catch (err) {
+      console.error('Error updating ticket status:', err);
     } finally {
       setIsUpdating(false);
     }
