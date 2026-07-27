@@ -17,19 +17,22 @@ import {
   IconSun,
   IconMoon,
   IconHelpCircle,
+  IconMail,
 } from '@tabler/icons-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import classes from './Sidebar.module.css';
 
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
-  onClick?: () => void;
+  href: string;
 }
 
-function NavItem({ icon, label, active, onClick }: NavItemProps) {
+function NavItem({ icon, label, active, href }: NavItemProps) {
   return (
-    <UnstyledButton className={`${classes.navItem} ${active ? classes.navItemActive : ''}`} onClick={onClick}>
+    <UnstyledButton component={Link} href={href} className={`${classes.navItem} ${active ? classes.navItemActive : ''}`}>
       <Group gap="sm">
         {icon}
         <Text size="sm" fw={active ? 600 : 400}>
@@ -40,13 +43,9 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   );
 }
 
-interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export default function Sidebar() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const pathname = usePathname();
 
   return (
     <Box className={`${classes.sidebar} glass`}>
@@ -75,20 +74,44 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         <NavItem
           icon={<IconLayoutDashboard size={18} />}
           label="Dashboard"
-          active={activeTab === 'all'}
-          onClick={() => onTabChange('all')}
+          href="/"
+          active={pathname === '/'}
         />
         <NavItem
           icon={<IconBulb size={18} />}
           label="Feature Requests"
-          active={activeTab === 'features'}
-          onClick={() => onTabChange('features')}
+          href="/features"
+          active={pathname === '/features'}
         />
         <NavItem
           icon={<IconBug size={18} />}
           label="Bug Reports"
-          active={activeTab === 'bugs'}
-          onClick={() => onTabChange('bugs')}
+          href="/bugs"
+          active={pathname === '/bugs'}
+        />
+
+        <Divider my="sm" opacity={0.1} />
+        
+        <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb={4} px="sm">
+          Control Center
+        </Text>
+        <NavItem
+          icon={<IconLayoutDashboard size={18} />}
+          label="Mini Dashboard"
+          href="/control-center/mini-dashboard"
+          active={pathname === '/control-center/mini-dashboard'}
+        />
+        <NavItem
+          icon={<IconBulb size={18} />}
+          label="Announcements"
+          href="/control-center/announcements"
+          active={pathname === '/control-center/announcements'}
+        />
+        <NavItem
+          icon={<IconMail size={18} />}
+          label="Email Campaigns"
+          href="/control-center/emails"
+          active={pathname === '/control-center/emails'}
         />
       </Stack>
 
