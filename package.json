@@ -9,13 +9,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@mantine/core": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
+    "@mantine/tiptap": "^8.3.18",
+    "@react-email/components": "^1.0.12",
     "@supabase/supabase-js": "^2.107.0",
     "@tabler/icons-react": "^3.41.0",
+    "@tiptap/pm": "^3.29.0",
+    "@tiptap/react": "^3.29.0",
+    "@tiptap/starter-kit": "^3.29.0",
     "next": "16.2.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-email": "^6.9.1"
   },
   "devDependencies": {
     "@types/node": "^20",

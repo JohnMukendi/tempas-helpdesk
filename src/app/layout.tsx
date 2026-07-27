@@ -4,6 +4,7 @@ import '@mantine/core/styles.css';
 import './globals.css';
 import { tempasTheme } from '@/theme/theme';
 import { AuthProvider } from '@/context/AuthContext';
+import AnnouncementsPopup from '@/components/AnnouncementsPopup';
 
 // Force all pages to be server-rendered at request time.
 // Required for Supabase env vars to be available and for the auth-gated dashboard.
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body>
         <MantineProvider theme={tempasTheme} defaultColorScheme="dark">
           <AuthProvider>
+            <AnnouncementsPopup />
             {children}
           </AuthProvider>
         </MantineProvider>
