@@ -9,7 +9,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(req: NextRequest) {
   try {
-    const { subject, headline, htmlBody, ctaText, ctaLink, recipients, isRawHtml, rawHtmlBody } = await req.json();
+    const { subject, headline, htmlBody, ctaText, ctaLink, recipients, isRawHtml, rawHtmlBody, campaignId } = await req.json();
 
     const zeptoKey = process.env.ZEPTOMAIL_API_KEY;
     const senderEmail = process.env.ZEPTOMAIL_SENDER_EMAIL;
@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
         })
       );
     }
+    
+    // Un-encode brackets just in case React Email encoded our merge tags in hrefs
+    emailHtml = emailHtml.replace(/%7B%7B/g, '{{').replace(/%7D%7D/g, '}}');
 
     // 3. Send via ZeptoMail API in batches of 40
     // ZeptoMail limit is 50 per API call for the `to` field
@@ -58,7 +61,8 @@ export async function POST(req: NextRequest) {
             name: user.name || "Tempas User" 
           },
           merge_info: {
-            name: user.name || "there"
+            name: user.name || "there",
+            email: user.email
           }
         })),
         subject: subject,
@@ -80,6 +84,14 @@ export async function POST(req: NextRequest) {
         console.error("ZeptoMail error response:", errData);
         // We log it but continue processing other batches if there are any
       }
+    // 4. Mark campaign as sent if campaignId is provided
+    if (campaignId) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      await supabaseAdmin.from('campaigns').update({
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        recipients_count: userList.length
+      }).eq('id', campaignId);
     }
 
     return NextResponse.json({ success: true, count: userList.length });

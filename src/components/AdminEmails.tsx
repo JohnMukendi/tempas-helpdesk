@@ -27,6 +27,8 @@ import {
   Popover,
   Select,
   Drawer,
+  Modal,
+  Badge,
 } from "@mantine/core";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -44,6 +46,9 @@ import {
   IconArrowLeft,
   IconCode,
   IconEditCircle,
+  IconDeviceFloppy,
+  IconHistory,
+  IconPlus,
 } from "@tabler/icons-react";
 import "@mantine/tiptap/styles.css";
 
@@ -55,9 +60,28 @@ type AppUser = {
   created_at: string;
   last_activity: string;
   user_profile?: string;
+  is_subscribed?: boolean;
 };
 
 type SortKey = keyof AppUser;
+
+type Segment = {
+  id: string;
+  name: string;
+  filters: any;
+};
+
+type Campaign = {
+  id: string;
+  name: string;
+  subject: string;
+  body_html: string;
+  mode: "visual" | "raw";
+  status: "draft" | "sent";
+  created_at: string;
+  sent_at?: string;
+  recipients_count?: number;
+};
 
 const TEMPLATES = [
   {
@@ -101,7 +125,7 @@ const TEMPLATES = [
     <tr>
       <td style="padding:20px; text-align:center; background-color:#fafafa; font-size:12px; color:#8898aa;">
         Sent securely from Tempas.<br/>
-        <a href="#" style="color:#8898aa;">Unsubscribe</a>
+        <a href="https://helpdesk.tempas.io/unsubscribe?email={{email}}" style="color:#8898aa;">Unsubscribe</a>
       </td>
     </tr>
   </table>
@@ -169,6 +193,17 @@ export default function AdminEmails() {
     joinedOp: "before",
     joinedDate: "",
   });
+  
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [segmentModalOpen, setSegmentModalOpen] = useState(false);
+  const [newSegmentName, setNewSegmentName] = useState("");
+  const [savingSegment, setSavingSegment] = useState(false);
+
+  // Campaign History State
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"saved"|"saving"|"error">("saved");
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -202,7 +237,129 @@ export default function AdminEmails() {
       }
     }
     fetchUsers();
+    fetchSegments();
+    fetchCampaigns();
   }, []);
+
+  const fetchCampaigns = async () => {
+    try {
+      const res = await fetch("/api/campaigns");
+      const data = await res.json();
+      if (data.campaigns) setCampaigns(data.campaigns);
+    } catch (err) {
+      console.error("Failed to load campaigns", err);
+    }
+  };
+
+  useEffect(() => {
+    // Only auto-save if we have a current campaign id
+    if (!currentCampaignId) return;
+
+    const timeoutId = setTimeout(async () => {
+      setSaveStatus("saving");
+      try {
+        const body_html = editorMode === "raw" ? rawHtml : previewHtml;
+        await fetch("/api/campaigns", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            id: currentCampaignId, 
+            name: subject || "Untitled Campaign", 
+            subject, 
+            body_html, 
+            mode: editorMode 
+          })
+        });
+        setSaveStatus("saved");
+      } catch (err) {
+        console.error("Auto-save failed", err);
+        setSaveStatus("error");
+      }
+    }, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [subject, previewHtml, rawHtml, editorMode, currentCampaignId]);
+
+  const handleNewCampaign = async () => {
+    try {
+      setSaveStatus("saving");
+      const body_html = editorMode === "raw" ? rawHtml : previewHtml;
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: subject || "Untitled Campaign", 
+          subject, 
+          body_html, 
+          mode: editorMode 
+        })
+      });
+      const data = await res.json();
+      if (data.campaign) {
+        setCurrentCampaignId(data.campaign.id);
+        setCampaigns([data.campaign, ...campaigns]);
+        setSaveStatus("saved");
+      }
+    } catch (err) {
+      console.error("Failed to create campaign", err);
+      setSaveStatus("error");
+    }
+  };
+
+  const handleLoadCampaign = (camp: Campaign) => {
+    setCurrentCampaignId(camp.id);
+    setSubject(camp.subject || "");
+    setEditorMode(camp.mode);
+    if (camp.mode === "raw") {
+      setRawHtml(camp.body_html || "");
+    } else {
+      setPreviewHtml(camp.body_html || "");
+      if (editor) editor.commands.setContent(camp.body_html || "");
+    }
+    setHistoryDrawerOpen(false);
+  };
+
+  const fetchSegments = async () => {
+    try {
+      const res = await fetch("/api/segments");
+      const data = await res.json();
+      if (data.segments) setSegments(data.segments);
+    } catch (err) {
+      console.error("Failed to load segments", err);
+    }
+  };
+
+  const handleSaveSegment = async () => {
+    if (!newSegmentName.trim()) return;
+    setSavingSegment(true);
+    try {
+      const res = await fetch("/api/segments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newSegmentName, filters: colFilters }),
+      });
+      const data = await res.json();
+      if (data.segment) {
+        setSegments([data.segment, ...segments]);
+        setPreset(data.segment.id);
+        setSegmentModalOpen(false);
+        setNewSegmentName("");
+      }
+    } catch (err) {
+      console.error("Failed to save segment", err);
+    } finally {
+      setSavingSegment(false);
+    }
+  };
+
+  const handlePresetChange = (val: string | null) => {
+    setPreset(val);
+    if (val) {
+      const seg = segments.find(s => s.id === val);
+      if (seg) {
+        setColFilters(seg.filters);
+      }
+    }
+  };
 
   const handleSort = (key: SortKey) => {
     let direction: "asc" | "desc" = "asc";
@@ -331,11 +488,12 @@ export default function AdminEmails() {
     if (allSelected) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers([...sortedAndFilteredUsers]);
+      setSelectedUsers([...sortedAndFilteredUsers.filter(u => u.is_subscribed !== false)]);
     }
   };
 
   const toggleRow = (user: AppUser) => {
+    if (user.is_subscribed === false) return;
     setSelectedUsers((current) =>
       current.find((u) => u.id === user.id)
         ? current.filter((u) => u.id !== user.id)
@@ -433,6 +591,7 @@ export default function AdminEmails() {
         isRawHtml: editorMode === "raw",
         rawHtmlBody: editorMode === "raw" ? rawHtml : undefined,
         recipients: selectedUsers,
+        campaignId: currentCampaignId,
       };
 
       const res = await fetch("/api/send-email", {
@@ -539,6 +698,25 @@ export default function AdminEmails() {
         </Alert>
       )}
 
+      <Group justify="space-between" mb="xs">
+        <Group>
+          <Text fw={700} size="xl">Email Campaigns</Text>
+          {currentCampaignId && (
+            <Badge color={saveStatus === "error" ? "red" : saveStatus === "saving" ? "yellow" : "green"} variant="light">
+              {saveStatus === "error" ? "Error Saving" : saveStatus === "saving" ? "Saving..." : "Saved"}
+            </Badge>
+          )}
+        </Group>
+        <Group>
+          <Button variant="light" color="warmGold" leftSection={<IconHistory size={16} />} onClick={() => setHistoryDrawerOpen(true)}>
+            Drafts & History
+          </Button>
+          <Button color="warmGold" leftSection={<IconPlus size={16} />} onClick={handleNewCampaign} disabled={!!currentCampaignId && saveStatus !== "saved"}>
+            New Campaign
+          </Button>
+        </Group>
+      </Group>
+
       <Paper
         p="xl"
         radius="md"
@@ -582,7 +760,7 @@ export default function AdminEmails() {
                   <Select
                     placeholder="Filter Presets"
                     value={preset}
-                    onChange={setPreset}
+                    onChange={handlePresetChange}
                     data={[
                       {
                         value: "never_logged_in",
@@ -590,9 +768,18 @@ export default function AdminEmails() {
                       },
                       { value: "inactive_30", label: "Inactive for 30+ Days" },
                       { value: "inactive_90", label: "Inactive for 90+ Days" },
+                      ...segments.map(s => ({ value: s.id, label: s.name }))
                     ]}
                     clearable
                   />
+                  <Button 
+                    variant="light" 
+                    color="warmGold" 
+                    leftSection={<IconDeviceFloppy size={16} />}
+                    onClick={() => setSegmentModalOpen(true)}
+                  >
+                    Save Segment
+                  </Button>
                 </Group>
               </Group>
 
@@ -860,6 +1047,7 @@ export default function AdminEmails() {
                                     checked={isSelected}
                                     onChange={() => toggleRow(u)}
                                     color="warmGold"
+                                    disabled={u.is_subscribed === false}
                                   />
                                 </Table.Td>
                                 <Table.Td>
@@ -877,7 +1065,12 @@ export default function AdminEmails() {
                                       {u.name?.charAt(0) ||
                                         u.email.charAt(0).toUpperCase()}
                                     </Avatar>
-                                    <Text size="sm">{fullName}</Text>
+                                    <Box>
+                                      <Text size="sm">{fullName}</Text>
+                                      {u.is_subscribed === false && (
+                                        <Badge size="xs" color="red" variant="light" mt={2}>Unsubscribed</Badge>
+                                      )}
+                                    </Box>
                                   </Group>
                                 </Table.Td>
                                 <Table.Td>{u.email}</Table.Td>
@@ -1307,6 +1500,65 @@ export default function AdminEmails() {
           </Group>
         )}
       </Paper>
+
+      <Modal
+        opened={segmentModalOpen}
+        onClose={() => setSegmentModalOpen(false)}
+        title="Save Audience Segment"
+        centered
+      >
+        <TextInput
+          label="Segment Name"
+          placeholder="e.g. Active Power Users"
+          value={newSegmentName}
+          onChange={(e) => setNewSegmentName(e.currentTarget.value)}
+          mb="md"
+          data-autofocus
+        />
+        <Button
+          fullWidth
+          color="warmGold"
+          onClick={handleSaveSegment}
+          loading={savingSegment}
+          disabled={!newSegmentName.trim()}
+        >
+          Save Segment
+        </Button>
+      </Modal>
+
+      <Drawer
+        opened={historyDrawerOpen}
+        onClose={() => setHistoryDrawerOpen(false)}
+        position="right"
+        title={<Text fw={600} size="lg">Campaign History</Text>}
+        size="md"
+      >
+        <Stack gap="md" mt="md">
+          {campaigns.length === 0 ? (
+            <Text c="dimmed" ta="center" mt="xl">No campaigns found.</Text>
+          ) : (
+            campaigns.map((camp) => (
+              <Paper key={camp.id} p="md" radius="md" withBorder>
+                <Group justify="space-between" mb="xs">
+                  <Text fw={600} truncate style={{ flex: 1 }}>{camp.name || "Untitled"}</Text>
+                  <Badge color={camp.status === "sent" ? "green" : "gray"}>
+                    {camp.status}
+                  </Badge>
+                </Group>
+                <Text size="sm" c="dimmed" mb="md" truncate>{camp.subject}</Text>
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed">
+                    {new Date(camp.created_at).toLocaleDateString()}
+                  </Text>
+                  <Button variant="light" size="xs" onClick={() => handleLoadCampaign(camp)}>
+                    {camp.status === "sent" ? "View / Clone" : "Resume"}
+                  </Button>
+                </Group>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      </Drawer>
 
       <Drawer
         opened={!!profileDrawerUser}

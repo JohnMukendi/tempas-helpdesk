@@ -11,7 +11,7 @@ export async function GET() {
     // Fetch users from public.users and presence
     const { data: usersData, error } = await supabaseAdmin
       .from('users')
-      .select('id, email, name, surname, last_activity, created_at, user_profile, presence(last_seen)')
+      .select('id, email, name, surname, last_activity, created_at, user_profile, is_subscribed, presence(last_seen)')
       .order('created_at', { ascending: false });
 
     if (error) {

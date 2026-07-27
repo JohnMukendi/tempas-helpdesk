@@ -67,7 +67,7 @@ export const TempasEmail = ({
               Sent securely from Tempas.
             </Text>
             <Text style={footerLinks}>
-              <Link href={`${appUrl}/settings`} style={link}>
+              <Link href={`https://helpdesk.tempas.io/unsubscribe?email={{email}}`} style={link}>
                 Unsubscribe
               </Link>
               {' • '}
