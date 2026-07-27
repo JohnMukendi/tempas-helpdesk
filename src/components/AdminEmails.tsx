@@ -445,8 +445,8 @@ export default function AdminEmails() {
     // Sort
     if (sortConfig) {
       filtered.sort((a, b) => {
-        let aVal = a[sortConfig.key] || "";
-        let bVal = b[sortConfig.key] || "";
+        let aVal: any = a[sortConfig.key] || "";
+        let bVal: any = b[sortConfig.key] || "";
 
         if (
           sortConfig.key === "created_at" ||
@@ -1398,7 +1398,7 @@ export default function AdminEmails() {
                   <strong>{selectedUsers.length}</strong> selected users.
                 </Text>
 
-                <Box
+                <Paper
                   bg="gray.0"
                   p="md"
                   radius="md"
@@ -1425,7 +1425,7 @@ export default function AdminEmails() {
                       {editorMode}
                     </Text>
                   </Group>
-                </Box>
+                </Paper>
 
                 <Button
                   size="lg"

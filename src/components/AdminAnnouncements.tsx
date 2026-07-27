@@ -110,7 +110,7 @@ export default function AdminAnnouncements() {
 
       // Read output
       const data = await ffmpeg.readFile(outputName);
-      const gifBlob = new Blob([(data as Uint8Array).buffer], { type: 'image/gif' });
+      const gifBlob = new Blob([data as any], { type: 'image/gif' });
 
       // Upload to Supabase Storage
       setConversionProgress(100);

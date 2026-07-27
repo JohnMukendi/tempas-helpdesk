@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
         console.error("ZeptoMail error response:", errData);
         // We log it but continue processing other batches if there are any
       }
+    }
     // 4. Mark campaign as sent if campaignId is provided
     if (campaignId) {
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

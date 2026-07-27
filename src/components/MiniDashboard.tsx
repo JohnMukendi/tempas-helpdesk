@@ -10,6 +10,7 @@ import {
   Center,
   Avatar,
   Badge,
+  Box,
 } from '@mantine/core';
 import { supabase } from '@/lib/supabase';
 import { IconUsers, IconActivity } from '@tabler/icons-react';
@@ -51,7 +52,7 @@ export default function MiniDashboard() {
         <StatCard
           icon={<IconUsers size={22} />}
           label="Total Registered"
-          value="--" // In a real app, query auth.users or profiles table
+          value={0} // In a real app, query auth.users or profiles table
           gradient="linear-gradient(135deg, #3b82f6, #2563eb)"
         />
       </Group>
