@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import useSWR from "swr";
 import {
   Box,
   Button,
@@ -147,6 +148,8 @@ const TEMPLATES = [
   },
 ];
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function AdminEmails() {
   const [activeStep, setActiveStep] = useState(0);
 
@@ -171,8 +174,13 @@ export default function AdminEmails() {
   } | null>(null);
 
   // Users grid state
-  const [users, setUsers] = useState<AppUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const { data: usersData, isLoading: loadingUsers } = useSWR("/api/users", fetcher, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 60000, // 1 minute
+  });
+  const users: AppUser[] = usersData?.users || [];
+
   const [search, setSearch] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<AppUser[]>([]);
   const [sortConfig, setSortConfig] = useState<{
@@ -223,20 +231,6 @@ export default function AdminEmails() {
   }, [editor]);
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch("/api/users");
-        const data = await res.json();
-        if (data.users) {
-          setUsers(data.users);
-        }
-      } catch (err) {
-        console.error("Failed to load users", err);
-      } finally {
-        setLoadingUsers(false);
-      }
-    }
-    fetchUsers();
     fetchSegments();
     fetchCampaigns();
   }, []);
