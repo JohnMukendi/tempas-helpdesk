@@ -1,19 +1,32 @@
 .card {
-  padding: 16px 18px;
+  padding: 16px 80px 16px 20px;
   cursor: pointer;
   position: relative;
+  
+  /* Ticket mask shape */
+  mask-image: radial-gradient(circle at right 60px top 0px, transparent 12px, black 12.5px),
+              radial-gradient(circle at right 60px bottom 0px, transparent 12px, black 12.5px);
+  mask-size: 100% 51%, 100% 51%;
+  mask-repeat: no-repeat;
+  mask-position: top, bottom;
+  -webkit-mask-image: radial-gradient(circle at right 60px top 0px, transparent 12px, black 12.5px),
+                      radial-gradient(circle at right 60px bottom 0px, transparent 12px, black 12.5px);
+  -webkit-mask-size: 100% 51%, 100% 51%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: top, bottom;
 }
 
 .card::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 3px;
+  top: 16px;
+  bottom: 16px;
+  width: 4px;
+  border-radius: 4px;
   background: transparent;
   transition: background 0.2s ease;
+  z-index: 2;
 }
 
 .card:hover::before {
@@ -23,4 +36,14 @@
 .card:focus-visible {
   outline: 2px solid #D4A017;
   outline-offset: 2px;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  right: 60px;
+  border-left: 2px dashed var(--mantine-color-default-border);
+  opacity: 0.7;
 }
