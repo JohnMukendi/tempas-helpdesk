@@ -17,6 +17,7 @@ import {
   Progress,
   Select,
   Textarea,
+  JsonInput,
 } from '@mantine/core';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -117,7 +118,7 @@ export default function AdminAnnouncements() {
       const fileName = `${Date.now()}-announcement.gif`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('announcemnt_recordings')
+        .from('announcement_recordings')
         .upload(fileName, gifBlob, {
           cacheControl: '3600',
           upsert: false
@@ -126,7 +127,7 @@ export default function AdminAnnouncements() {
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('announcemnt_recordings')
+        .from('announcement_recordings')
         .getPublicUrl(fileName);
 
       setIsConverting(false);
@@ -159,11 +160,19 @@ export default function AdminAnnouncements() {
     }
 
     const content = editor.getHTML();
+    
+    let parsedSteps = [];
+    try {
+      parsedSteps = JSON.parse(steps || '[]');
+    } catch (err) {
+      alert("Invalid JSON format in steps field");
+      return;
+    }
 
     if (editingId) {
       const { error } = await supabase
         .from('announcements')
-        .update({ title, description, type, steps: JSON.parse(steps || '[]'), version, content, is_active: isActive, gif_url: finalGifUrl })
+        .update({ title, description, type, steps: parsedSteps, version, content, is_active: isActive, gif_url: finalGifUrl })
         .eq('id', editingId);
 
       if (!error) {
@@ -173,7 +182,7 @@ export default function AdminAnnouncements() {
     } else {
       const { error } = await supabase
         .from('announcements')
-        .insert([{ title, description, type, steps: JSON.parse(steps || '[]'), version, content, is_active: isActive, gif_url: finalGifUrl }]);
+        .insert([{ title, description, type, steps: parsedSteps, version, content, is_active: isActive, gif_url: finalGifUrl }]);
 
       if (!error) {
         resetForm();
@@ -251,12 +260,15 @@ export default function AdminAnnouncements() {
             value={description}
             onChange={(e) => setDescription(e.currentTarget.value)}
           />
-          <Textarea
+          <JsonInput
             label="Onboarding Steps (JSON)"
             placeholder='[{"target": ".my-element", "content": "Click here!"}]'
-            value={steps}
-            onChange={(e) => setSteps(e.currentTarget.value)}
+            validationError="Invalid JSON format"
+            formatOnBlur
+            autosize
             minRows={2}
+            value={steps}
+            onChange={(val) => setSteps(val)}
           />
           <Box>
             <Text size="sm" fw={500} mb={3}>Content</Text>

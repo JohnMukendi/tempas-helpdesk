@@ -56,7 +56,7 @@ export default function TicketCard({ ticket, onClick }: TicketCardProps) {
 
       {/* Description excerpt */}
       <Text size="xs" c="dimmed" lineClamp={2} mb={10} lh={1.5}>
-        {ticket.description}s
+        {ticket.description}
       </Text>
 
       {/* Footer */}

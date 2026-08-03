@@ -27,7 +27,7 @@ import { useTickets } from '@/hooks/useTickets';
 import type { Ticket } from '@/types/ticket';
 import classes from './page.module.css';
 
-export default function DashboardPage() {
+export default function TicketsPage() {
   const { tickets, featureRequests, bugReports, loading: ticketsLoading, error: ticketsError } = useTickets();
   
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -80,7 +80,7 @@ export default function DashboardPage() {
           style={{ fontSize: 28, lineHeight: 1.15 }}
           mt={4}
         >
-          Dashboard Overview
+          Tickets
         </Text>
       </Box>
 
