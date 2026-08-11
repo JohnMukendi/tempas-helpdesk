@@ -719,7 +719,8 @@ export default function AdminEmails() {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
+          overflow: "visible",
+          minHeight: 0,
         }}
       >
         <Stepper
@@ -732,7 +733,7 @@ export default function AdminEmails() {
             <Stack
               gap="md"
               mt="xl"
-              style={{ flex: 1, height: "calc(100vh - 280px)" }}
+              style={{ flex: 1, height: "calc(100vh - 420px)", overflow: "auto" }}
             >
               <Group justify="space-between">
                 <Box>
@@ -1473,7 +1474,7 @@ export default function AdminEmails() {
         </Stepper>
 
         {activeStep < 3 && (
-          <Group justify="space-between" mt="xl" style={{ marginTop: "auto" }}>
+          <Group justify="space-between" mt="xl" pt="md" style={{ borderTop: "1px solid var(--mantine-color-default-border)", flexShrink: 0 }}>
             <Button
               variant="default"
               onClick={prevStep}

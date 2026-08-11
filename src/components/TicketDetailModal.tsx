@@ -19,8 +19,7 @@ import {
   IconFlag,
 } from '@tabler/icons-react';
 import type { Ticket } from '@/types/ticket';
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -46,21 +45,85 @@ export default function TicketDetailModal({
   onClose,
 }: TicketDetailModalProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(ticket?.status ?? 'open');
+
+  // Sync local status when a different ticket is opened
+  useEffect(() => {
+    if (ticket) setCurrentStatus(ticket.status);
+  }, [ticket?.id]);
 
   if (!ticket) return null;
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!ticket || ticket.status === newStatus) return;
+    if (!ticket || currentStatus === newStatus) return;
     setIsUpdating(true);
+
+    // Optimistically update the select immediately
+    setCurrentStatus(newStatus as Ticket['status']);
+
     try {
-      const { error } = await supabase
-        .from('tickets')
-        .update({ status: newStatus })
-        .eq('id', ticket.id);
-      if (error) throw error;
-      onClose();
+      // Use the server-side API route (service role key bypasses RLS)
+      const updateRes = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ticket.id, status: newStatus }),
+      });
+
+      if (!updateRes.ok) {
+        const err = await updateRes.json();
+        throw new Error(err.error || 'Failed to update ticket status');
+      }
+
+      // Derive a friendly first name from the email address
+      const recipientEmail = ticket.submittedBy;
+      const firstName = recipientEmail.split('@')[0]
+        .replace(/[._-]/g, ' ')
+        .split(' ')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+      // Build per-status email content
+      const emailMap: Record<string, { subject: string; headline: string; body: string }> = {
+        'in-progress': {
+          subject: `Your bug report is being worked on 😉`,
+          headline: `We're on it!`,
+          body: `<p>Hey ${firstName},</p><p>Your bug report <strong>"${ticket.title}"</strong> is currently being worked on. We'll get back to you as soon as we solve it 😉</p><p>Thanks for your patience — the Tempas team has got you covered.</p>`,
+        },
+        closed: {
+          subject: `Your bug report has been resolved ✅`,
+          headline: `Issue Resolved`,
+          body: `<p>Hey ${firstName},</p><p>Great news! Your bug report <strong>"${ticket.title}"</strong> has been resolved. Thanks for helping us make Tempas better — we truly appreciate it 🙌</p>`,
+        },
+        open: {
+          subject: `Your bug report has been re-opened 🔄`,
+          headline: `Ticket Re-opened`,
+          body: `<p>Hey ${firstName},</p><p>Your bug report <strong>"${ticket.title}"</strong> has been re-opened for further investigation. We'll keep you updated on our progress.</p>`,
+        },
+      };
+
+      const emailContent = emailMap[newStatus];
+      if (emailContent) {
+        const res = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: emailContent.subject,
+            headline: emailContent.headline,
+            htmlBody: emailContent.body,
+            ctaText: 'View on Tempas',
+            ctaLink: process.env.NEXT_PUBLIC_APP_URL || 'https://tempas.io',
+            recipients: [{ email: recipientEmail, name: firstName }],
+            isRawHtml: false,
+          }),
+        });
+        if (!res.ok) {
+          console.error('Failed to send status notification email', await res.text());
+        }
+      }
     } catch (err) {
       console.error('Error updating ticket status:', err);
+      // Roll back the optimistic update on failure
+      setCurrentStatus(ticket.status);
     } finally {
       setIsUpdating(false);
     }
@@ -137,15 +200,15 @@ export default function TicketDetailModal({
               { value: 'in-progress', label: 'In Progress' },
               { value: 'closed', label: 'Closed' },
             ]}
-            value={ticket.status}
+            value={currentStatus}
             onChange={(value) => value && handleStatusChange(value)}
             disabled={isUpdating}
             rightSection={isUpdating ? <Loader size={14} /> : undefined}
             styles={{
               input: {
-                backgroundColor: `${statusColors[ticket.status]}18`,
-                color: statusColors[ticket.status],
-                border: `1px solid ${statusColors[ticket.status]}30`,
+                backgroundColor: `${statusColors[currentStatus]}18`,
+                color: statusColors[currentStatus],
+                border: `1px solid ${statusColors[currentStatus]}30`,
                 fontWeight: 600,
               }
             }}

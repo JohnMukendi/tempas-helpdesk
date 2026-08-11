@@ -6,7 +6,7 @@ import {
   Box,
   Text,
   Group,
-  Stack,
+  SimpleGrid,
   Select,
   TextInput,
   Loader,
@@ -146,9 +146,9 @@ export default function BugsPage() {
               {filteredBugs.length}
             </Badge>
           </Group>
-          <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {filteredBugs.length === 0 ? (
-              <Text size="sm" c="dimmed" ta="center" py="xl">
+              <Text size="sm" c="dimmed" ta="center" py="xl" style={{ gridColumn: '1 / -1' }}>
                 No bug reports found
               </Text>
             ) : (
@@ -160,7 +160,7 @@ export default function BugsPage() {
                 />
               ))
             )}
-          </Stack>
+          </SimpleGrid>
         </Box>
       )}
 
