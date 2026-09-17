@@ -11,50 +11,76 @@ import {
   Avatar,
   Badge,
   Box,
+  ActionIcon,
+  Tooltip,
 } from '@mantine/core';
-import { supabase } from '@/lib/supabase';
-import { IconUsers, IconActivity } from '@tabler/icons-react';
+import { IconUsers, IconActivity, IconRefresh } from '@tabler/icons-react';
 import StatCard from '@/components/StatCard';
+
+function formatLastSeen(dateStr: string | null) {
+  if (!dateStr) return 'Just now';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
 
 export default function MiniDashboard() {
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchActiveUsers();
-    fetchTotalUsers();
-  }, []);
+  const loadData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
 
-  const fetchActiveUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('presence')
-      .select('*')
-      .order('last_seen', { ascending: false, nullsFirst: false })
-      .limit(20);
-
-    if (!error && data) {
-      setActiveUsers(data);
-    } else if (error) {
-      console.error('Error fetching presence:', error);
-    }
-    setLoading(false);
-  };
-
-  const fetchTotalUsers = async () => {
     try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.users)) {
-          setTotalUsers(data.users.length);
+      const [presenceRes, usersRes] = await Promise.all([
+        fetch('/api/presence'),
+        fetch('/api/users'),
+      ]);
+
+      if (presenceRes.ok) {
+        const pData = await presenceRes.json();
+        if (Array.isArray(pData.presence)) {
+          setActiveUsers(pData.presence);
+        }
+      }
+
+      if (usersRes.ok) {
+        const uData = await usersRes.json();
+        if (Array.isArray(uData.users)) {
+          setTotalUsers(uData.users.length);
         }
       }
     } catch (err) {
-      console.error('Failed to fetch total registered users:', err);
+      console.error('Error loading MiniDashboard data:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const onlineNowCount = activeUsers.filter((u) => u.is_online).length;
 
   return (
     <Stack gap="xl">
@@ -62,7 +88,7 @@ export default function MiniDashboard() {
         <StatCard
           icon={<IconActivity size={22} />}
           label="Active Users (Now)"
-          value={activeUsers.length || 0}
+          value={onlineNowCount}
           gradient="linear-gradient(135deg, #10b981, #059669)"
         />
         <StatCard
@@ -75,10 +101,22 @@ export default function MiniDashboard() {
 
       <Paper p="md" radius="md" withBorder>
         <Group justify="space-between" mb="lg">
-          <Text fw={600}>Recent Activity (Presence Table)</Text>
-          <Badge variant="light" color="warmGold">
-            Live
-          </Badge>
+          <Group gap="xs">
+            <Text fw={600}>Recent Activity (Presence)</Text>
+            <Badge variant="light" color="warmGold">
+              Live
+            </Badge>
+          </Group>
+          <Tooltip label="Refresh">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              loading={refreshing}
+              onClick={() => loadData(true)}
+            >
+              <IconRefresh size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
 
         {loading ? (
@@ -96,14 +134,21 @@ export default function MiniDashboard() {
                 <Group justify="space-between">
                   <Group>
                     <Avatar src={presence.user_profile} color="warmGold" radius="xl">
-                      {(presence.user_name || presence.email || presence.user_id || '?').substring(0, 2).toUpperCase()}
+                      {(presence.user_name || presence.email || presence.user_id || '?')
+                        .substring(0, 2)
+                        .toUpperCase()}
                     </Avatar>
                     <Box>
                       <Text size="sm" fw={500}>
                         {presence.user_name || presence.email || presence.user_id || 'Unknown User'}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        Last active: {presence.last_seen ? new Date(presence.last_seen).toLocaleString() : 'Just now'}
+                        Last active: {formatLastSeen(presence.last_seen)}
+                        {presence.last_seen && (
+                          <Text component="span" c="dimmed" size="xs" ml={6}>
+                            ({new Date(presence.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                          </Text>
+                        )}
                       </Text>
                     </Box>
                   </Group>
