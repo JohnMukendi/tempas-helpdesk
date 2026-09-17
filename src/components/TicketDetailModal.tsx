@@ -10,6 +10,7 @@ import {
   Box,
   Select,
   Loader,
+  Anchor,
 } from '@mantine/core';
 import {
   IconBug,
@@ -17,9 +18,24 @@ import {
   IconClock,
   IconUser,
   IconFlag,
+  IconExternalLink,
+  IconPhotoOff,
 } from '@tabler/icons-react';
 import type { Ticket } from '@/types/ticket';
 import { useState, useEffect } from 'react';
+
+function getResolvedScreenshotUrl(url?: string): string {
+  if (!url) return '';
+  if (
+    url.startsWith('/api/') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:') ||
+    (url.startsWith('http') && !url.includes('/storage/v1/object/'))
+  ) {
+    return url;
+  }
+  return `/api/tickets/screenshot?path=${encodeURIComponent(url)}`;
+}
 
 interface TicketDetailModalProps {
   ticket: Ticket | null;
@@ -46,10 +62,14 @@ export default function TicketDetailModal({
 }: TicketDetailModalProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(ticket?.status ?? 'open');
+  const [imageError, setImageError] = useState(false);
 
-  // Sync local status when a different ticket is opened
+  // Sync local status and reset image state when a different ticket is opened
   useEffect(() => {
-    if (ticket) setCurrentStatus(ticket.status);
+    if (ticket) {
+      setCurrentStatus(ticket.status);
+      setImageError(false);
+    }
   }, [ticket?.id]);
 
   if (!ticket) return null;
@@ -241,21 +261,91 @@ export default function TicketDetailModal({
           </Text>
         </Box>
 
-        {ticket.screenshotUrl && (
-          <Box>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb={6}>
-              Attached Screenshot
-            </Text>
-            <Box style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={ticket.screenshotUrl} 
-                alt="Ticket attachment" 
-                style={{ width: '100%', display: 'block' }} 
-              />
+        {ticket.screenshotUrl && (() => {
+          const resolvedUrl = getResolvedScreenshotUrl(ticket.screenshotUrl);
+          return (
+            <Box>
+              <Group justify="space-between" align="center" mb={6}>
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                  Attached Screenshot
+                </Text>
+                {!imageError && (
+                  <Anchor
+                    href={resolvedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="xs"
+                    c="blue"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <span>Open in new tab</span>
+                    <IconExternalLink size={12} />
+                  </Anchor>
+                )}
+              </Group>
+
+              {imageError ? (
+                <Box
+                  style={{
+                    padding: '24px 16px',
+                    borderRadius: 8,
+                    border: '1px dashed rgba(0,0,0,0.15)',
+                    background: 'rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <IconPhotoOff size={28} color="#94a3b8" />
+                  <Text size="sm" c="dimmed">
+                    Unable to preview attached screenshot
+                  </Text>
+                  <Anchor
+                    href={resolvedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="xs"
+                    c="blue"
+                  >
+                    Try opening attachment directly
+                  </Anchor>
+                </Box>
+              ) : (
+                <Box
+                  style={{
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    background: 'rgba(0,0,0,0.02)',
+                  }}
+                >
+                  <a
+                    href={resolvedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'block', cursor: 'zoom-in' }}
+                    title="Click to view full image in a new tab"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolvedUrl}
+                      alt="Ticket attachment"
+                      style={{
+                        width: '100%',
+                        maxHeight: '480px',
+                        objectFit: 'contain',
+                        display: 'block',
+                      }}
+                      onError={() => setImageError(true)}
+                    />
+                  </a>
+                </Box>
+              )}
             </Box>
-          </Box>
-        )}
+          );
+        })()}
 
         <Divider opacity={0.1} />
 
