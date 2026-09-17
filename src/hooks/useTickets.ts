@@ -72,6 +72,19 @@ interface TicketRow {
   screenshot_url: string | null;
 }
 
+function getAttachmentUrl(rawPath: string | null): string | undefined {
+  if (!rawPath) return undefined;
+  if (
+    rawPath.startsWith('/api/') ||
+    rawPath.startsWith('data:') ||
+    rawPath.startsWith('blob:') ||
+    (rawPath.startsWith('http') && !rawPath.includes('/storage/v1/object/'))
+  ) {
+    return rawPath;
+  }
+  return `/api/tickets/screenshot?path=${encodeURIComponent(rawPath)}`;
+}
+
 function mapRows(rows: TicketRow[]): Ticket[] {
   return rows.map((row) => ({
     id: row.id,
@@ -82,6 +95,6 @@ function mapRows(rows: TicketRow[]): Ticket[] {
     priority: (row.priority ?? 'medium') as Ticket['priority'],
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     submittedBy: row.submitted_by ?? 'Unknown',
-    screenshotUrl: row.screenshot_url ?? undefined,
+    screenshotUrl: getAttachmentUrl(row.screenshot_url),
   }));
 }
