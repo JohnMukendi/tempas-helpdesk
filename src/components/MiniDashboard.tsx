@@ -18,26 +18,42 @@ import StatCard from '@/components/StatCard';
 
 export default function MiniDashboard() {
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchActiveUsers();
+    fetchTotalUsers();
   }, []);
 
   const fetchActiveUsers = async () => {
     setLoading(true);
-    // Based on user feedback: "There is a presense table"
-    // Assuming standard fields like user_id, updated_at or similar
     const { data, error } = await supabase
-      .from('presense')
+      .from('presence')
       .select('*')
-      .order('updated_at', { ascending: false, nullsFirst: false })
+      .order('last_seen', { ascending: false, nullsFirst: false })
       .limit(20);
 
     if (!error && data) {
       setActiveUsers(data);
+    } else if (error) {
+      console.error('Error fetching presence:', error);
     }
     setLoading(false);
+  };
+
+  const fetchTotalUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.users)) {
+          setTotalUsers(data.users.length);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch total registered users:', err);
+    }
   };
 
   return (
@@ -52,14 +68,14 @@ export default function MiniDashboard() {
         <StatCard
           icon={<IconUsers size={22} />}
           label="Total Registered"
-          value={0} // In a real app, query auth.users or profiles table
+          value={totalUsers}
           gradient="linear-gradient(135deg, #3b82f6, #2563eb)"
         />
       </Group>
 
       <Paper p="md" radius="md" withBorder>
         <Group justify="space-between" mb="lg">
-          <Text fw={600}>Recent Activity (Presense Table)</Text>
+          <Text fw={600}>Recent Activity (Presence Table)</Text>
           <Badge variant="light" color="warmGold">
             Live
           </Badge>
@@ -76,22 +92,24 @@ export default function MiniDashboard() {
         ) : (
           <Stack gap="sm">
             {activeUsers.map((presence, idx) => (
-              <Paper key={presence.id || idx} p="sm" radius="md" bg="dark.6">
+              <Paper key={presence.id || presence.user_id || idx} p="sm" radius="md" bg="dark.6">
                 <Group justify="space-between">
                   <Group>
-                    <Avatar color="warmGold" radius="xl">
-                      {(presence.email || presence.user_id || '?').substring(0, 2).toUpperCase()}
+                    <Avatar src={presence.user_profile} color="warmGold" radius="xl">
+                      {(presence.user_name || presence.email || presence.user_id || '?').substring(0, 2).toUpperCase()}
                     </Avatar>
                     <Box>
                       <Text size="sm" fw={500}>
-                        {presence.email || presence.user_id || 'Unknown User'}
+                        {presence.user_name || presence.email || presence.user_id || 'Unknown User'}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        Last active: {presence.updated_at ? new Date(presence.updated_at).toLocaleString() : 'Just now'}
+                        Last active: {presence.last_seen ? new Date(presence.last_seen).toLocaleString() : 'Just now'}
                       </Text>
                     </Box>
                   </Group>
-                  <Badge color="green" variant="dot">Online</Badge>
+                  <Badge color={presence.is_online ? 'green' : 'gray'} variant="dot">
+                    {presence.is_online ? 'Online' : 'Offline'}
+                  </Badge>
                 </Group>
               </Paper>
             ))}
